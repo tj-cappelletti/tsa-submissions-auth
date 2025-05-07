@@ -1,5 +1,4 @@
-using System;
-using System.IO;
+using System.Linq;
 using System.Reflection;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Builder;
@@ -9,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Tsa.Submissions.Auth.WebApi.Services;
 
 namespace Tsa.Submissions.Auth.WebApi;
 
@@ -28,15 +28,24 @@ public class Startup(IConfiguration configuration)
 
         app.UseRouting();
 
-        //app.UseAuthentication();
-
-        //app.UseAuthorization();
-
         app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
     }
 
     public void ConfigureServices(IServiceCollection services)
     {
+        var assemblyTypes = Assembly.GetExecutingAssembly().GetTypes();
+
+        // Add Pingable Services - Should match MongoDB Services
+        var pingableServiceType = typeof(IPingableService);
+        var pingableServices = assemblyTypes
+            .Where(type => pingableServiceType.IsAssignableFrom(type) && type is { IsInterface: false, IsAbstract: false })
+            .ToList();
+
+        foreach (var pingableService in pingableServices)
+        {
+            services.AddSingleton(typeof(IPingableService), pingableService);
+        }
+
         // Setup Controllers
         services
             .AddControllers()
